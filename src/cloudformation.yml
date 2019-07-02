@@ -1,0 +1,167 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Example beanstalk application template.
+
+Resources:
+  BeanstalkApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      Description: ECOM Beanstalk POC
+      ApplicationName: SampleBeanstalkApplication
+  BeanstalkApplicationVersion:
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    Properties:
+      ApplicationName: !Ref 'BeanstalkApplication'
+      Description: ECOM Beanstalk POC Version
+      SourceBundle: './WebApiProject-Beanstalk.zip'
+  BeanstalkConfigurationTemplate:
+    Type: AWS::ElasticBeanstalk::ConfigurationTemplate
+    Properties:
+      ApplicationName: !Ref 'BeanstalkApplication'
+      Description: ECOM Beanstalk POC Configuration Template
+      OptionSettings:
+      - Namespace: aws:autoscaling:asg
+        OptionName: MinSize
+        Value: '2'
+      - Namespace: aws:autoscaling:asg
+        OptionName: MaxSize
+        Value: '6'
+      - Namespace: aws:elasticbeanstalk:environment
+        OptionName: EnvironmentType
+        Value: LoadBalanced
+      - Namespace: aws:elasticbeanstalk:environment
+        OptionName: ServiceRole
+        Value: !Ref BeanstalkServiceRole
+      - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        OptionName: MaxBatchSize
+        Value: '2'
+      - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        OptionName: MinInstancesInService
+        Value: '1'
+      - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        OptionName: RollingUpdateEnabled
+        Value: 'true'
+      - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        OptionName: RollingUpdateType
+        Value: Health
+      - Namespace: aws:elb:healthcheck
+        OptionName: Target 
+        Value: "HTTP:80/api/healthcheck"
+      - Namespace: aws:elasticbeanstalk:command
+        OptionName: DeploymentPolicy 
+        Value: Rolling
+      - Namespace: aws:elasticbeanstalk:command
+        OptionName: BatchSize 
+        Value: '25'
+      - Namespace: aws:autoscaling:trigger
+        OptionName: MeasureName
+        Value: NetworkOut
+      - Namespace: aws:autoscaling:trigger
+        OptionName: Unit
+        Value: Bytes
+      - Namespace: aws:autoscaling:trigger
+        OptionName: UpperThreshold
+        Value: '6000000'
+      - Namespace: aws:autoscaling:trigger
+        OptionName: LowerThreshold
+        Value: '2000000'
+      - Namespace: aws:autoscaling:trigger
+        OptionName: Period
+        Value: '5'
+      - Namespace: aws:autoscaling:trigger
+        OptionName: Statistic
+        Value: 'Average'
+
+      - Namespace: aws:elasticbeanstalk:healthreporting:system
+        OptionName: SystemType
+        Value: 'enhanced'
+
+      - Namespace: aws:elasticbeanstalk:managedactions
+        OptionName: ManagedActionsEnabled
+        Value: 'true'
+      - Namespace: aws:elasticbeanstalk:managedactions
+        OptionName: PreferredStartTime
+        Value: 'Tue:02:00'
+
+      - Namespace: aws:elasticbeanstalk:managedactions:platformupdate
+        OptionName: UpdateLevel
+        Value: 'minor '
+      - Namespace: aws:elasticbeanstalk:managedactions:platformupdate
+        OptionName: InstanceRefreshEnabled
+        Value: 'true'
+
+      SolutionStackName: 64bit Windows Server 2016 v2.0.4 running IIS 10.0
+  BeanstalkEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref 'BeanstalkApplication'
+      Description: ECOM Beanstalk POC Environment
+      EnvironmentName: SampleBeanstalkEnvironment
+      TemplateName: !Ref BeanstalkConfigurationTemplate
+      VersionLabel: !Ref BeanstalkApplicationVersion
+      OptionSettings:
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: IamInstanceProfile
+        Value: !Ref RootInstanceProfile
+  RootRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier"
+        - "arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker"
+        - "arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier"
+        - "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+  RolePolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: root
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AllLogsAccess
+          Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:GetLogEvents
+          - logs:PutLogEvents
+          - logs:DescribeLogGroups
+          - logs:DescribeLogStreams
+          - logs:PutRetentionPolicy
+          Effect: Allow
+          Resource:
+          - arn:aws:logs:*:*:log-group:*
+      Roles:
+      - !Ref RootRole
+  RootInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+      - !Ref RootRole
+
+  BeanstalkServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth"
+        - "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - elasticbeanstalk.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
