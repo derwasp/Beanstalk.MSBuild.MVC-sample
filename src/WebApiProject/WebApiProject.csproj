@@ -28,7 +28,6 @@
     </NuGetPackageImportStamp>
     <Use64BitIISExpress />
     <BeanstalkManifestFile>aws-windows-deployment-manifest.json</BeanstalkManifestFile>
-    <RunBeanstalkRelease>true</RunBeanstalkRelease>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -37,6 +36,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <RunBeanstalkRelease>true</RunBeanstalkRelease>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <DefineConstants>TRACE</DefineConstants>
